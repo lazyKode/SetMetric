@@ -6,6 +6,7 @@ import {chooseSplit,generatePlan,isTimed,nextTargets,weeklyChart} from './src/ge
 import {initialState,loadState,saveState} from './src/storage';
 import {ActiveWorkout,Exercise,Gear,Goal,Level,LoggedSet,Muscle,MUSCLES,PlanMove,Profile,Session,Setup,Split,State,Unit,Volume,WorkoutDay,WEEKDAYS,GOALS,LEVELS,SPLITS,SETUPS,makeId,mondayIndex} from './src/types';
 import {Btn,C,Chip,H1,H2,Label,Muted,Panel,Row,Rule,S,Stat} from './src/ui';
+import {AssessmentFlow} from './src/assessment';
 
 type Tab='home'|'plan'|'generator'|'library'|'insights'|'settings'|'day'|'workout';
 type SwapContext={dayId:string;sessionId:string;exerciseId?:string}|null;
@@ -119,7 +120,7 @@ function AppInner(){
  };
  const RootHome=()=>{
   const next=today&&!today.recovery?today:plan?.days.find(x=>!x.recovery);
-  return <><Header title={db.profile.name?`Welcome, ${db.profile.name.split(' ')[0]}`:'Built for progress.'} subtitle="Your training, engineered around you."/>
+  return <><Header title={db.profile.name?`Welcome, ${db.profile.name.split(' ')[0]}`:'Built for progress.'} subtitle="A clear routine for your goal and ability."/>
     <Panel style={{backgroundColor:'#153B36',borderColor:'#286859',padding:21,marginBottom:19}}>
       <Text style={{color:C.accent,fontWeight:'900',letterSpacing:2,fontSize:11}}>YOUR TRAINING ENGINE</Text>
       <Text style={{fontSize:29,fontWeight:'900',color:C.text,marginTop:9,lineHeight:34}}>{plan?'Your next rep starts here.':'Build a stronger version of you.'}</Text>
@@ -139,7 +140,7 @@ function AppInner(){
   </>;
  };
  const PlanScreen=()=>{
-   if(!plan)return <><Header title="Training plan" subtitle="Your customized week awaits."/><Panel><H2>No plan generated yet</H2><Muted style={{marginVertical:12}}>Tell us how you train and we’ll build your weekly schedule.</Muted><Btn title="BUILD MY PLAN" onPress={()=>goto('generator')}/></Panel></>;
+   if(!plan)return <><Header title="Training plan" subtitle="Your weekly body-part schedule."/><Panel><H2>No plan generated yet</H2><Muted style={{marginVertical:12}}>Tell us how you train and we’ll build your weekly schedule.</Muted><Btn title="BUILD MY PLAN" onPress={()=>goto('generator')}/></Panel></>;
    return <><Header title="Your training plan" subtitle={`${plan.splitName} · ${plan.profile.sessionsPerDay} session${plan.profile.sessionsPerDay>1?'s':''} per day`}/>
      <Panel style={{marginBottom:20}}><Row style={{justifyContent:'space-between'}}><View><Text style={[S.eyebrow,{marginBottom:7}]}>ACTIVE PROGRAM</Text><Text style={{fontSize:21,color:C.text,fontWeight:'800'}}>{GOALS[plan.profile.goal]}</Text><Muted>{plan.days.filter(x=>!x.recovery).length} days / week · {plan.profile.minutes} min / session</Muted></View><Text style={{fontSize:26,color:C.accent}}>◈</Text></Row></Panel>
      <BlockTitle title="Weekly schedule" action="Regenerate" onPress={()=>goto('generator')}/>
@@ -155,37 +156,7 @@ function AppInner(){
      <View style={{marginTop:15}}><Btn title={db.active&&db.active.dayId===day.id&&db.active.sessionId===s.id?'RESUME SESSION  →':'START SESSION  →'} onPress={()=>beginWorkout(day,s)}/></View>
    </Panel>)}
  </>;
- const GeneratorScreen=()=>{
-  const up=<K extends keyof Profile>(key:K,value:Profile[K])=>setWorkingProfile(old=>({...old,[key]:value}));
-  return <><Header title="Program builder" subtitle="Designed around your goals, training time and equipment."/>
-    <Panel><Text style={S.eyebrow}>01 · OBJECTIVE</Text><BlockTitle title="What are you working toward?"/><Selector choices={SHORT_GOALS.map(x=>({value:x,label:GOALS[x]}))} value={workingProfile.goal} onChange={v=>up('goal',v as Goal)}/>
-      <Rule/><Label>Experience level</Label><Selector choices={LEVEL_CHOICES.map(x=>({value:x,label:LEVELS[x]}))} value={workingProfile.level} onChange={v=>up('level',v as Level)}/>
-    </Panel>
-    <Panel><Text style={S.eyebrow}>02 · SCHEDULE</Text><BlockTitle title="Training frequency"/>
-      <Muted>Days each week</Muted><Row style={{justifyContent:'space-between',marginVertical:13}}><TouchableOpacity onPress={()=>up('daysPerWeek',Math.max(2,workingProfile.daysPerWeek-1))} style={styles.counter}><Text style={styles.counterText}>−</Text></TouchableOpacity><Text style={{color:C.text,fontWeight:'900',fontSize:35}}>{workingProfile.daysPerWeek}</Text><TouchableOpacity onPress={()=>up('daysPerWeek',Math.min(7,workingProfile.daysPerWeek+1))} style={styles.counter}><Text style={styles.counterText}>+</Text></TouchableOpacity></Row>
-      <Muted>Minutes per session</Muted><Selector choices={[30,45,60,75,90].map(x=>({value:String(x),label:`${x} min`}))} value={String(workingProfile.minutes)} onChange={v=>up('minutes',Number(v))}/>
-      <View style={{marginTop:13}}><Label>Sessions per day</Label><Selector choices={[1,2,3].map(n=>({value:String(n),label:`${n} session${n>1?'s':''}`}))} value={String(workingProfile.sessionsPerDay)} onChange={v=>up('sessionsPerDay',Number(v) as 1|2|3)}/></View>
-      {workingProfile.sessionsPerDay>1?<Muted style={{marginTop:8,color:C.amber}}>Multi-session training is high workload. Build up gradually, monitor fatigue and leave sufficient recovery between sessions.</Muted>:null}
-    </Panel>
-    <Panel><Text style={S.eyebrow}>03 · TRAINING STYLE</Text><BlockTitle title="Structure & equipment"/>
-      <Label>Training split</Label><Selector choices={SPLIT_CHOICES.map(x=>({value:x,label:SPLITS[x]}))} value={workingProfile.split} onChange={v=>up('split',v as Split)}/>
-      <View style={{marginTop:12}}><Label>Equipment</Label><Selector choices={SETUP_CHOICES.map(x=>({value:x,label:SETUPS[x]}))} value={workingProfile.setup} onChange={v=>up('setup',v as Setup)}/></View>
-      <View style={{marginTop:13}}><Label>Training volume</Label><Selector choices={[{value:'balanced',label:'Balanced'},{value:'high',label:'High volume'}]} value={workingProfile.volume} onChange={v=>up('volume',v as Volume)}/></View>
-    </Panel>
-    <Panel><Text style={S.eyebrow}>04 · FOCUS</Text><BlockTitle title="Muscle priorities"/><Muted>Select up to three to emphasize in your program.</Muted>
-      <View style={{flexDirection:'row',flexWrap:'wrap',marginTop:13}}>{MUSCLES.map(m=><Chip key={m} title={m} selected={workingProfile.priorities.includes(m)} onPress={()=>up('priorities',workingProfile.priorities.includes(m)?workingProfile.priorities.filter(x=>x!==m):workingProfile.priorities.length<3?[...workingProfile.priorities,m]:workingProfile.priorities)}/>)}</View>
-      <Rule/><Row style={{justifyContent:'space-between'}}><View style={{flex:1}}><Label>Armwrestling-specific drills</Label><Muted style={{fontSize:11}}>Grip, cupping, pronation and rising</Muted></View><TouchableOpacity onPress={()=>up('armwrestling',!workingProfile.armwrestling)} style={[styles.toggle,workingProfile.armwrestling&&{backgroundColor:C.accent}]}><View style={[styles.toggleDot,workingProfile.armwrestling&&{alignSelf:'flex-end'}]}/></TouchableOpacity></Row>
-    </Panel>
-    <Panel style={{borderColor:'#327464'}}><Muted style={{marginBottom:12}}>Preview: {SPLITS[chooseSplit(workingProfile)]}, {workingProfile.daysPerWeek===7?6:workingProfile.daysPerWeek} training days + {workingProfile.daysPerWeek===7?'1 recovery day':'rest days'}, {workingProfile.sessionsPerDay} session(s) daily.</Muted>
-      <Btn title={plan?'REGENERATE MY PLAN  →':'GENERATE MY PLAN  →'} onPress={()=>{
-        const generate=()=>{const newPlan=generatePlan(workingProfile,[...EXERCISES,...db.customExercises]);put(o=>({...o,profile:{...workingProfile},plan:newPlan,active:null}));setSelectedDay('');setTab('plan')};
-        if(db.active)Alert.alert('Workout in progress','Finish or discard your active workout before replacing the plan.');
-        else if(plan)Alert.alert('Replace current plan?','Previous workout history stays saved; your current weekly schedule will be replaced.',[{text:'Cancel',style:'cancel'},{text:'Replace',onPress:generate}]);
-        else generate();
-      }}/>
-    </Panel>
-  </>;
- };
+ const GeneratorScreen=()=> <AssessmentFlow base={db.profile} onGenerate={(profile)=>{const generate=()=>{const newPlan=generatePlan(profile,[...EXERCISES,...db.customExercises]);put(o=>({...o,profile,plan:newPlan,active:null}));setSelectedDay('');setTab('plan');};if(db.active)Alert.alert('Workout in progress','Finish or discard this workout before replacing your plan.');else if(plan)Alert.alert('Replace your plan?','Your completed workouts stay saved.',[{text:'Cancel',style:'cancel'},{text:'Replace',onPress:generate}]);else generate();}}/>;
  const LibraryScreen=()=>{
   const matches=catalog.filter(ex=>(muscleFilter==='All'||ex.muscle===muscleFilter)&&(!swap||isAllowed(ex,db.profile.setup))&&ex.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.muscle.localeCompare(b.muscle));
   return <><Header title={swap?'Choose an exercise':'Exercise library'} subtitle={swap?'Tap an exercise to add or replace it.':`${catalog.length} exercises · Filter by muscle and equipment.`} back={swap?()=>{setSelectedDay(swap.dayId);setSwap(null);setTab('day')}:undefined}/>
@@ -242,14 +213,14 @@ function AppInner(){
    <Panel><Text style={S.eyebrow}>PROFILE</Text><Text style={{color:C.text,fontWeight:'800',marginVertical:10}}>Your name</Text><TextInput style={S.input} placeholder="Optional" placeholderTextColor={C.dim} value={db.profile.name} onChangeText={(name:string)=>put(o=>({...o,profile:{...o.profile,name}}))}/><Rule/><Label>Weight unit</Label><Selector choices={[{value:'kg',label:'Kilograms (kg)'},{value:'lb',label:'Pounds (lb)'}]} value={db.profile.unit} onChange={x=>{const target=x as Unit;if(target===db.profile.unit)return;const factor=target==='lb'?2.2046226218:1/2.2046226218;const cv=(w:number)=>Math.round(w*factor*100)/100;put(o=>({...o,profile:{...o.profile,unit:target},plan:o.plan?{...o.plan,profile:{...o.plan.profile,unit:target}}:null,history:o.history.map(h=>({...h,sets:h.sets.map(s=>({...s,weight:cv(s.weight)}))})),active:o.active?{...o.active,sets:o.active.sets.map(s=>({...s,weight:cv(s.weight)}))}:null}));}}/><Muted style={{fontSize:11}}>Changing units converts previously logged weights and updates the saved training plan.</Muted></Panel>
    <Panel><Text style={S.eyebrow}>DATA & PRIVACY</Text><BlockTitle title="Your training data"/><Muted style={{marginBottom:15}}>Your training history is stored locally on this device. There is no account or cloud sync in this version.</Muted><Btn title="SHARE HISTORY AS CSV TEXT" secondary onPress={exportCSV}/></Panel>
    <Panel><Label>Training plan</Label><Muted style={{marginTop:7,marginBottom:14}}>You can regenerate your schedule without erasing previous workout history.</Muted><Btn title="EDIT TRAINING PREFERENCES" secondary onPress={()=>goto('generator')}/></Panel>
-   <Panel><Label>About SetMetric</Label><Muted style={{marginTop:8}}>Version 1.0 · Cross-platform Expo app · Offline-first.</Muted><Muted style={{fontSize:11,marginTop:8}}>SetMetric provides general fitness planning, not clinical assessment. Stop painful exercises and seek professional advice for injuries or health concerns.</Muted></Panel>
+   <Panel><Label>About SetMetric</Label><Muted style={{marginTop:8}}>Version 1.3 · Cross-platform Expo app · Offline-first.</Muted><Muted style={{fontSize:11,marginTop:8}}>SetMetric provides general fitness planning, not clinical assessment. Stop painful exercises and seek professional advice for injuries or health concerns.</Muted></Panel>
    </>;
  };
- const nav:[Tab,string,string][]=[['home','Home','⌂'],['plan','Program','▤'],['library','Exercises','◎'],['insights','Progress','▥']];
+ const nav:[Tab,string,string][]=[['home','Today','⌂'],['plan','My week','▤'],['insights','Progress','▥']];
  if(!loaded)return <View style={[S.screen,{justifyContent:'center',alignItems:'center'}]}><ActivityIndicator color={C.accent} size="large"/><Text style={{color:C.accent,fontWeight:'900',fontSize:25,marginTop:18}}>SetMetric</Text></View>;
  return <SafeAreaView edges={['top','bottom']} style={S.screen}><StatusBar barStyle="light-content" backgroundColor={C.bg}/>
    <ScrollView key={tab+(selectedDay||'')} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false} contentContainerStyle={S.content}>
-     {tab==='home'?RootHome():tab==='plan'?PlanScreen():tab==='generator'?GeneratorScreen():tab==='day'?DayScreen():tab==='workout'?WorkoutScreen():tab==='library'?LibraryScreen():tab==='insights'?InsightsScreen():SettingsScreen()}
+     {tab==='home'&&!plan?GeneratorScreen():tab==='home'?RootHome():tab==='plan'?PlanScreen():tab==='generator'?GeneratorScreen():tab==='day'?DayScreen():tab==='workout'?WorkoutScreen():tab==='library'?LibraryScreen():tab==='insights'?InsightsScreen():SettingsScreen()}
    </ScrollView>
    <View style={styles.bottom}>{nav.map(([k,l,ico])=><TouchableOpacity accessibilityRole="tab" accessibilityState={{selected:tab===k}} key={k} onPress={()=>goto(k)} style={styles.navItem}><Text style={{fontSize:24,color:tab===k?C.accent:C.dim,fontWeight:'700'}}>{ico}</Text><Text style={{fontWeight:'800',fontSize:10,color:tab===k?C.accent:C.muted,marginTop:2}}>{l}</Text></TouchableOpacity>)}</View>
    <Modal visible={customOpen} transparent animationType="slide" onRequestClose={()=>setCustomOpen(false)}><KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS==='ios'?'padding':undefined}><View style={styles.modal}>
