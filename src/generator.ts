@@ -37,7 +37,7 @@ export function chooseSplit(profile: Profile): Exclude<Split,'auto'> {
   if (profile.split !== 'auto') return profile.split;
   if (profile.daysPerWeek <= 3) return 'full_body';
   if (profile.daysPerWeek === 4) return 'upper_lower';
-  if (profile.daysPerWeek === 5) return 'body_part';
+  if (profile.daysPerWeek === 5) return 'upper_lower';
   return 'push_pull_legs';
 }
 export function movePrescription(ex: Exercise, profile: Profile): Omit<PlanMove,'exerciseId'> {
