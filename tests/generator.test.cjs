@@ -44,3 +44,46 @@ test('next target only increases load when performance supports it',()=>{
 test('chart returns six empty periods for no history',()=>{
  const points=weeklyChart([]);assert.equal(points.length,6);assert.ok(points.every(p=>p.workouts===0&&p.volume===0));
 });
+const {DEFAULT_ASSESSMENT,safeFocus,focusIsAll,recommendDays,assessmentToProfile,trainingMethod,sportGuidance}=require('../.test-dist/science');
+test('all ten muscles can be selected at once and keep balanced programming',()=>{
+ const all=[...require('../.test-dist/types').MUSCLES];
+ assert.equal(all.length,10);
+ assert.equal(focusIsAll(all),true);
+ const a={...DEFAULT_ASSESSMENT,goal:'hypertrophy',age:'30',focus:all};
+ const p=assessmentToProfile(a,INITIAL_PROFILE);
+ assert.deepEqual(p.priorities,[]);
+ const plan=generatePlan(p);
+ assert.ok(plan.days.filter(d=>!d.recovery).length>=2);
+});
+test('any nonempty muscle subset is persisted into profile as priorities',()=>{
+ const a={...DEFAULT_ASSESSMENT,goal:'strength',age:'26',strength:'strong',experience:'consistent',focus:['Back','Biceps','Forearms']};
+ const p=assessmentToProfile(a,INITIAL_PROFILE);
+ assert.deepEqual(p.priorities,['Back','Biceps','Forearms']);
+ assert.equal(p.goal,'strength');
+ const plan=generatePlan(p);
+ assert.ok(plan.days.every(d=>d.recovery||d.sessions[0].exercises.length>0));
+});
+test('repeat values in focus are deduplicated with stable ordering',()=>{
+ assert.deepEqual(safeFocus(['Biceps','Biceps','Chest']),['Chest','Biceps']);
+ assert.equal(focusIsAll([]),false);
+});
+test('beginners and active athletes have recoverable starting schedules',()=>{
+ const novice={...DEFAULT_ASSESSMENT,goal:'fitness',age:'45'};
+ assert.equal(recommendDays(novice),2);
+ const runner={...DEFAULT_ASSESSMENT,goal:'sport',age:'28',stamina:'high',strength:'strong',experience:'consistent',sport:'running'};
+ assert.equal(recommendDays(runner),3);
+ assert.match(sportGuidance(runner),/Endurance focus/);
+});
+test('training method and optional cardio adjust to goal and experience',()=>{
+ for(const goal of ['strength','hypertrophy','recomposition','fat_loss','endurance','sport']) {
+   const p={...INITIAL_PROFILE,goal,level:'advanced',daysPerWeek:4};
+   const plan=generatePlan(p);
+   assert.ok(trainingMethod(p).effort.length>0);
+   if(['fat_loss','endurance','recomposition'].includes(goal))assert.ok(plan.days.some(d=>d.conditioning?.minutes>0));
+ }
+});
+test('a forearm focus appears in a two-day full-body plan',()=>{
+ const p={...INITIAL_PROFILE,daysPerWeek:2,minutes:45,priorities:['Forearms'],split:'auto'};
+ const plan=generatePlan(p);const moves=plan.days.flatMap(d=>d.sessions.flatMap(s=>s.exercises));
+ assert.ok(moves.some(m=>EXERCISES.find(e=>e.id===m.exerciseId)?.muscle==='Forearms'));
+});

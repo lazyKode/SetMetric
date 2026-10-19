@@ -3,7 +3,7 @@
     "name": "SetMetric",
     "slug": "setmetric",
     "scheme": "setmetric",
-    "version": "1.2.0",
+    "version": "1.4.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
@@ -24,6 +24,6 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B1116"
     },
-    "description": "Smart workout planning, progressive overload and strength tracking"
+    "description": "A simple evidence-informed weekly strength, muscle, fitness and fat-loss schedule generator"
   }
 }

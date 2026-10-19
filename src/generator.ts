@@ -37,15 +37,18 @@ export function chooseSplit(profile: Profile): Exclude<Split,'auto'> {
   if (profile.split !== 'auto') return profile.split;
   if (profile.daysPerWeek <= 3) return 'full_body';
   if (profile.daysPerWeek === 4) return 'upper_lower';
-  if (profile.daysPerWeek === 5) return 'body_part';
+  if (profile.daysPerWeek === 5) return 'upper_lower';
   return 'push_pull_legs';
 }
 export function movePrescription(ex: Exercise, profile: Profile): Omit<PlanMove,'exerciseId'> {
-  const heavy = ex.type === 'compound' && profile.goal === 'strength';
-  const baseSets = profile.level === 'beginner' ? 2 : profile.volume === 'high' ? 4 : 3;
-  const sets = Math.min(5, heavy ? baseSets + 1 : baseSets);
-  const reps: [number,number] = heavy ? [4,6] : profile.goal === 'strength' ? [6,10] : ex.type === 'compound' ? [6,10] : [10,15];
-  return {sets:isTimed(ex.id)?2:sets,repMin:isTimed(ex.id)?20:reps[0],repMax:isTimed(ex.id)?40:reps[1],rest:heavy?150:ex.type==='compound'?120:75};
+  const heavy=ex.type==='compound'&&profile.goal==='strength'&&profile.level!=='beginner';
+  const beginner=profile.level==='beginner';
+  const baseSets=beginner?2:profile.volume==='high'?4:3;
+  const sets=Math.min(5,heavy?baseSets+1:baseSets);
+  const reps:[number,number]=heavy?[4,6]:profile.goal==='strength'?[6,10]:
+    profile.goal==='endurance'?[10,15]:profile.goal==='sport'&&ex.type==='compound'?[5,8]:
+    ex.type==='compound'?[6,12]:[10,15];
+  return {sets:isTimed(ex.id)?2:sets,repMin:isTimed(ex.id)?20:reps[0],repMax:isTimed(ex.id)?40:reps[1],rest:heavy?180:ex.type==='compound'?120:75};
 }
 function pick(muscle:Muscle, pool:Exercise[], used:Set<string>, seed:number, compoundsFirst:boolean):Exercise|null {
   const all=pool.filter(e=>e.muscle===muscle&&!used.has(e.id)&&!e.id.startsWith('aw_'));
@@ -70,9 +73,15 @@ export function generatePlan(profile:Profile, catalog:Exercise[]=EXERCISES):Plan
     }
     const template=templates[i%templates.length];
     const used=new Set<string>();const exercises:Exercise[]=[];
-    const priority=profile.priorities.filter(m=>template.muscles.includes(m));
+    // A user may pick ALL ten muscles. All-selected means balanced training,
+    // while a smaller selection receives a modest, recoverable priority.
+    const priority=profile.priorities.filter(m=>template.muscles.includes(m)||split==='full_body');
+    const selectedAll=profile.priorities.length>=10;
     const queue=[...template.muscles];
-    if(priority.length) queue.splice(1,0,...priority,...priority);
+    if(priority.length&&!selectedAll){
+      queue.splice(1,0,...priority);
+      if(priority.length<=3)queue.push(...priority);
+    }
     for(let j=0;j<totalMoves*5&&exercises.length<totalMoves;j++){
       const ex=pick(queue[j%queue.length],pool,used,i*3+j,exercises.length<Math.ceil(totalMoves/3));
       if(ex) exercises.push(ex);
@@ -90,7 +99,8 @@ export function generatePlan(profile:Profile, catalog:Exercise[]=EXERCISES):Plan
         .slice(Math.floor(index*exercises.length/count),Math.floor((index+1)*exercises.length/count))
         .map(e=>({exerciseId:e.id,...movePrescription(e,profile)})),
     }));
-    days.push({id:makeId(),weekday,title:template.title,focus:template.muscles.slice(0,3).join(' · '),recovery:false,sessions});
+    const cardio=profile.goal==='endurance'?{minutes:profile.level==='beginner'?10:20,activity:'Easy to moderate walking, cycling or swimming'}:profile.goal==='fat_loss'||profile.goal==='recomposition'?{minutes:profile.level==='beginner'?10:15,activity:'Easy walking or cycling (build up gradually)'}:undefined;
+    days.push({id:makeId(),weekday,title:template.title,focus:template.muscles.slice(0,3).join(' · '),recovery:false,sessions,conditioning:cardio});
   });
   const splitName=split==='full_body'?'Full Body':split==='upper_lower'?'Upper / Lower':split==='push_pull_legs'?'Push / Pull / Legs':'Body-Part Split';
   return {id:makeId(),createdAt:new Date().toISOString(),splitName,profile:{...profile,priorities:[...profile.priorities]},days};
