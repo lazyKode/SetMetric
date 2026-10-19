@@ -17,7 +17,7 @@ export function AssessmentFlow({base,onGenerate}: {base:Profile;onGenerate:(prof
  const go=()=>{const problem=isValid();if(problem)return Alert.alert('One detail needed',problem);if(step<STEPS.length-1)setStep(step+1);else{if(Number(a.age)<18)Alert.alert('Youth training','This plan should be reviewed with a parent, guardian and qualified youth coach before starting.',[{text:'Continue',onPress:()=>onGenerate(profileFrom(a,base),a)}]);else if(a.limitations.trim()&&a.limitations.trim().toLowerCase()!=='none')Alert.alert('Check with a professional','Medical conditions, pregnancy and injuries may need an individually reviewed exercise plan.',[{text:'Continue',onPress:()=>onGenerate(profileFrom(a,base),a)}]);else onGenerate(profileFrom(a,base),a);}};
  return <View style={{paddingBottom:30}}>
    <Text style={styles.brand}>SETMETRIC  /  YOUR PLAN</Text>
-   <View style={styles.progress}><View style={[styles.progressFill,{width:(100*(step+1)/STEPS.length)+'%'}]}/></View>
+   <View style={styles.progress}><View style={[styles.progressFill,{width:`${100*(step+1)/STEPS.length}%` as `${number}%`}]}/></View>
    <Text style={styles.step}>STEP {step+1} OF {STEPS.length}</Text>
    <Text style={styles.heading}>{s.title}</Text><Text style={styles.caption}>{s.caption}</Text>
    {s.fields.map(field=><View key={field} style={styles.field}><Text style={styles.label}>{LABEL[field]}</Text>
