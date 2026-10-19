@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "SetMetric",
+    "slug": "setmetric",
+    "scheme": "setmetric",
+    "version": "1.2.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.setmetric.gym"
+    },
+    "android": {
+      "package": "com.setmetric.gym",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0B1116"
+      }
+    },
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B1116"
+    },
+    "description": "Smart workout planning, progressive overload and strength tracking"
+  }
+}

@@ -1,0 +1,17 @@
+node_modules/
+.expo/
+dist/
+build/
+.test-dist/
+.env
+.env.*
+!\.env.example
+ios/
+android/
+
+# Never commit Android keystores/signing secrets
+*.jks
+*.keystore
+*.p12
+*.mobileprovision
+*.p8

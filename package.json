@@ -1,0 +1,25 @@
+{
+  "name": "setmetric",
+  "version": "1.2.0",
+  "private": true,
+  "main": "node_modules/expo/AppEntry.js",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "doctor": "npx expo-doctor",
+    "check": "tsc --noEmit",
+    "test": "tsc -p tsconfig.core.json && node --test tests/generator.test.cjs"
+  },
+  "dependencies": {
+    "expo": "~57.0.21",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "react-native-safe-area-context": "~5.7.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "@types/react": "~19.2.0"
+  }
+}

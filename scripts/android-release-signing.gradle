@@ -1,0 +1,26 @@
+// SetMetric private release signing, loaded by CI AFTER Expo prebuild.
+// Passwords and keystore file come from GitHub Actions secrets, never source control.
+def signingKeystorePath = System.getenv('SETMETRIC_ANDROID_KEYSTORE')
+def signingStorePassword = System.getenv('SETMETRIC_ANDROID_STORE_PASSWORD')
+def signingKeyAlias = System.getenv('SETMETRIC_ANDROID_KEY_ALIAS')
+def signingKeyPassword = System.getenv('SETMETRIC_ANDROID_KEY_PASSWORD')
+
+if (![signingKeystorePath, signingStorePassword, signingKeyAlias, signingKeyPassword].every { it != null && !it.isEmpty() }) {
+    throw new GradleException('Missing SetMetric signing environment variable(s). Configure all four Android GitHub Actions secrets.')
+}
+
+android {
+    signingConfigs {
+        setMetricRelease {
+            storeFile file(signingKeystorePath)
+            storePassword signingStorePassword
+            keyAlias signingKeyAlias
+            keyPassword signingKeyPassword
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.setMetricRelease
+        }
+    }
+}

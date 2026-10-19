@@ -1,0 +1,225 @@
+name: Build SetMetric iPhone and Android Apps
+
+# Same download/install pattern as Aarti Sangrah:
+#  - Windows-sideload IPA for iPhone
+#  - installable standalone APK for Android
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: Choose the platform(s) to build
+        type: choice
+        required: true
+        default: both
+        options:
+          - both
+          - iphone
+          - android
+
+permissions:
+  contents: read
+
+concurrency:
+  group: setmetric-mobile-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    name: Android APK
+    if: ${{ inputs.platform == 'both' || inputs.platform == 'android' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Get source
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Expo SDK 57 Android platform
+        run: sdkmanager 'platforms;android-36' 'build-tools;36.0.0'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check workout generator and source
+        run: |
+          npm test
+          npm run check
+      - name: Set unique Android build version
+        run: node scripts/stamp-build.mjs
+      - name: Generate standalone Android project
+        run: npx expo prebuild --platform android --non-interactive --no-install
+      - name: Configure signed installable Android release APK
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$KEYSTORE_BASE64" ]]; then
+            if [[ -z "$KEYSTORE_PASSWORD" || -z "$KEY_ALIAS" || -z "$KEY_PASSWORD" ]]; then
+              echo '::error::Set all four ANDROID_* signing secrets, not just ANDROID_KEYSTORE_BASE64.'
+              exit 1
+            fi
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/setmetric-release.jks"
+            test -s "$RUNNER_TEMP/setmetric-release.jks"
+            chmod 600 "$RUNNER_TEMP/setmetric-release.jks"
+            echo "SETMETRIC_ANDROID_KEYSTORE=$RUNNER_TEMP/setmetric-release.jks" >> "$GITHUB_ENV"
+            echo "SETMETRIC_ANDROID_STORE_PASSWORD=$KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "SETMETRIC_ANDROID_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "SETMETRIC_ANDROID_KEY_PASSWORD=$KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo 'SETMETRIC_SIGNING_MODE=persistent' >> "$GITHUB_ENV"
+            echo 'Permanent Android signing enabled.'
+          else
+            if [[ -n "$KEYSTORE_PASSWORD" || -n "$KEY_ALIAS" || -n "$KEY_PASSWORD" ]]; then
+              echo '::error::Signing secrets are incomplete. Add all four, or remove all four to use temporary test signing.'
+              exit 1
+            fi
+            # A release APK needs a valid signature; assembleRelease without a signing
+            # config makes an unsigned artifact that cannot be installed. Generate a
+            # temporary key for FIRST-LOOK TESTS ONLY; it will not update old installs.
+            TEMP_PASS="$(openssl rand -hex 24)"
+            echo "::add-mask::$TEMP_PASS"
+            keytool -genkeypair -noprompt -storetype PKCS12 \
+              -keystore "$RUNNER_TEMP/setmetric-temporary.jks" \
+              -alias setmetric-temporary -keyalg RSA -keysize 3072 -validity 30 \
+              -dname 'CN=SetMetric Test, O=Local Development' \
+              -storepass "$TEMP_PASS" -keypass "$TEMP_PASS" >/dev/null 2>&1
+            chmod 600 "$RUNNER_TEMP/setmetric-temporary.jks"
+            echo "SETMETRIC_ANDROID_KEYSTORE=$RUNNER_TEMP/setmetric-temporary.jks" >> "$GITHUB_ENV"
+            echo "SETMETRIC_ANDROID_STORE_PASSWORD=$TEMP_PASS" >> "$GITHUB_ENV"
+            echo 'SETMETRIC_ANDROID_KEY_ALIAS=setmetric-temporary' >> "$GITHUB_ENV"
+            echo "SETMETRIC_ANDROID_KEY_PASSWORD=$TEMP_PASS" >> "$GITHUB_ENV"
+            echo 'SETMETRIC_SIGNING_MODE=temporary' >> "$GITHUB_ENV"
+            echo '::warning::Installable test APK signed with a NEW temporary key for this run. Future updates require uninstalling. Configure all four Android signing secrets before storing workout history.'
+          fi
+          printf '\napply from: file("../../scripts/android-release-signing.gradle")\n' >> android/app/build.gradle
+      - name: Build release APK with embedded JS bundle
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace
+      - name: Check and name APK
+        run: |
+          set -euo pipefail
+          test -s android/app/build/outputs/apk/release/app-release.apk
+          cp android/app/build/outputs/apk/release/app-release.apk SetMetric-Android.apk
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          test -x "$APKSIGNER"
+          "$APKSIGNER" verify --verbose SetMetric-Android.apk
+          cat > APK-INSTALL-NOTES.txt <<EOF
+          SetMetric for Android — direct APK installation
+          Signing mode: ${SETMETRIC_SIGNING_MODE}
+          persistent: APKs signed by the same keystore can install as updates without clearing data.
+          temporary: this build uses a fresh test signature. Future builds cannot update it in-place.
+          Keep the same package ID com.setmetric.gym for app updates.
+          EOF
+          sha256sum SetMetric-Android.apk > APK-SHA256.txt
+          ls -lh SetMetric-Android.apk
+      - name: Publish Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SetMetric-Android-APK
+          path: |
+            SetMetric-Android.apk
+            APK-INSTALL-NOTES.txt
+            APK-SHA256.txt
+          retention-days: 30
+          if-no-files-found: error
+
+  iphone:
+    name: iPhone IPA (Windows / Sideloadly)
+    if: ${{ inputs.platform == 'both' || inputs.platform == 'iphone' }}
+    runs-on: macos-26
+    timeout-minutes: 120
+    steps:
+      - name: Get source
+        uses: actions/checkout@v4
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Show Xcode version
+        run: xcodebuild -version
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Check workout generator and source
+        run: |
+          npm test
+          npm run check
+      - name: Set unique iOS build version
+        run: node scripts/stamp-build.mjs
+      - name: Generate native iPhone project
+        run: npx expo prebuild --platform ios --non-interactive --no-install
+      - name: Install iPhone native dependencies
+        run: |
+          cd ios
+          pod install
+      - name: Compile iPhone device app without Apple signing
+        shell: bash
+        run: |
+          set -euo pipefail
+          WORKSPACE="$(find ios -maxdepth 1 -name '*.xcworkspace' -type d -print -quit)"
+          test -n "$WORKSPACE"
+          SCHEME="$(basename "$WORKSPACE" .xcworkspace)"
+          echo "Building $WORKSPACE (scheme $SCHEME)"
+          xcodebuild \
+            -workspace "$WORKSPACE" \
+            -scheme "$SCHEME" \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath "$PWD/ios-derived-data" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY='' \
+            build > ios-xcodebuild.log 2>&1 || { tail -n 160 ios-xcodebuild.log; exit 1; }
+      - name: Package unsigned IPA for Sideloadly on Windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP_DIR="$PWD/ios-derived-data/Build/Products/Release-iphoneos"
+          APP_PATH="$(find "$APP_DIR" -maxdepth 1 -name '*.app' -type d -print -quit)"
+          if [[ -z "$APP_PATH" ]]; then
+            echo '::error::iPhone .app not found after xcodebuild.'
+            exit 1
+          fi
+          mkdir -p "$RUNNER_TEMP/setmetric-ipa/Payload"
+          cp -R "$APP_PATH" "$RUNNER_TEMP/setmetric-ipa/Payload/"
+          (cd "$RUNNER_TEMP/setmetric-ipa" && zip -qry "$GITHUB_WORKSPACE/SetMetric-iPhone-unsigned.ipa" Payload)
+          unzip -t SetMetric-iPhone-unsigned.ipa | tail -n 2
+          /usr/libexec/PlistBuddy -c 'Print :CFBundleIdentifier' "$APP_PATH/Info.plist" | grep -qx 'com.setmetric.gym'
+          (cd "$APP_PATH" && /usr/bin/lipo -archs "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' Info.plist)" | grep -qw arm64)
+          shasum -a 256 SetMetric-iPhone-unsigned.ipa > IPA-SHA256.txt
+          cat > IPHONE-INSTALL-NOTES.txt <<EOF
+          SetMetric iPhone — UNSIGNED IPA for Sideloadly on Windows
+          Device build: arm64. Sideloadly signs this IPA using your own Apple ID.
+          Not an App Store IPA; cannot be installed directly by tapping the file.
+          Bundle identifier: com.setmetric.gym
+          EOF
+          ls -lh SetMetric-iPhone-unsigned.ipa
+      - name: Publish iPhone artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SetMetric-iPhone-for-Windows
+          path: |
+            SetMetric-iPhone-unsigned.ipa
+            IPHONE-INSTALL-NOTES.txt
+            IPA-SHA256.txt
+          retention-days: 30
+          if-no-files-found: error
+      - name: Keep Xcode log if build fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SetMetric-iPhone-build-log
+          path: ios-xcodebuild.log
+          if-no-files-found: ignore
