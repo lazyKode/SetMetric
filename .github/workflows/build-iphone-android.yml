@@ -4,6 +4,11 @@ name: Build SetMetric iPhone and Android Apps
 #  - Windows-sideload IPA for iPhone
 #  - installable standalone APK for Android
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-iphone-android.yml'
+      - 'src/assessment.tsx'
   workflow_dispatch:
     inputs:
       platform:
@@ -139,7 +144,7 @@ jobs:
 
   iphone:
     name: iPhone IPA (Windows / Sideloadly)
-    if: ${{ inputs.platform == 'both' || inputs.platform == 'iphone' }}
+    if: ${{ github.event_name == 'push' || inputs.platform == 'both' || inputs.platform == 'iphone' }}
     runs-on: macos-26
     timeout-minutes: 120
     steps:
