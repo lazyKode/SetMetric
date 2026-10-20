@@ -7,7 +7,10 @@ import {initialState,loadState,saveState} from './src/storage';
 import {ActiveWorkout,Exercise,Gear,Goal,Level,LoggedSet,Muscle,MUSCLES,PlanMove,Profile,Session,Setup,Split,State,Unit,Volume,WorkoutDay,WEEKDAYS,GOALS,LEVELS,SPLITS,SETUPS,makeId,mondayIndex} from './src/types';
 import {Btn,C,Chip,H1,H2,Label,Muted,Panel,Row,Rule,S,Stat} from './src/ui';
 import {AssessmentFlow} from './src/assessment';
+<<<<<<< HEAD
 import {trainingMethod,focusIsAll,coachingNotes,sportGuidance} from './src/science';
+=======
+>>>>>>> 0231507b0e3f28685395d33a30aca9db624065c2
 
 type Tab='home'|'plan'|'generator'|'library'|'insights'|'settings'|'day'|'workout';
 type SwapContext={dayId:string;sessionId:string;exerciseId?:string}|null;
@@ -120,6 +123,7 @@ function AppInner(){
    </View>;
  };
  const RootHome=()=>{
+<<<<<<< HEAD
    const next=today&&!today.recovery?today:plan?.days.find(x=>!x.recovery);
    const active=next?.sessions[0];
    return <>
@@ -157,6 +161,35 @@ function AppInner(){
     {db.assessment&&sportGuidance(db.assessment)?<Panel><Text style={{color:C.accent,fontWeight:'900',fontSize:12}}>YOUR SPORT</Text><Muted style={{marginTop:8}}>{sportGuidance(db.assessment)}</Muted></Panel>:null}
     {db.assessment?coachingNotes(db.assessment).map((note,i)=><Muted key={i} style={{marginTop:8,fontSize:12}}>{note}</Muted>):null}
     <TouchableOpacity style={{alignItems:'center',paddingVertical:19}} onPress={()=>goto('generator')}><Text style={{color:C.accent,fontWeight:'800'}}>Change my answers or focus →</Text></TouchableOpacity>
+=======
+  const next=today&&!today.recovery?today:plan?.days.find(x=>!x.recovery);
+  return <><Header title={db.profile.name?`Welcome, ${db.profile.name.split(' ')[0]}`:'Built for progress.'} subtitle="A clear routine for your goal and ability."/>
+    <Panel style={{backgroundColor:'#153B36',borderColor:'#286859',padding:21,marginBottom:19}}>
+      <Text style={{color:C.accent,fontWeight:'900',letterSpacing:2,fontSize:11}}>YOUR TRAINING ENGINE</Text>
+      <Text style={{fontSize:29,fontWeight:'900',color:C.text,marginTop:9,lineHeight:34}}>{plan?'Your next rep starts here.':'Build a stronger version of you.'}</Text>
+      <Muted style={{marginTop:8,marginBottom:20,color:'#C5DAD5'}}>{plan?`${plan.splitName} · ${plan.days.filter(d=>!d.recovery).length} training days / week`:'Generate a workout plan that fits your schedule, goals and equipment.'}</Muted>
+      <Btn title={plan?'VIEW MY PLAN  →':'CREATE MY PLAN  →'} onPress={()=>goto(plan?'plan':'generator')}/>
+    </Panel>
+    <Panel><Row><Stat value={String(db.history.length)} label="WORKOUTS"/><Stat value={String(totalSets)} label="SETS LOGGED"/><Stat value={Math.round(workVolume).toLocaleString()} label={`VOLUME (${db.profile.unit})`}/></Row></Panel>
+    {db.active?<Panel style={{borderColor:C.accent}}><Row style={{justifyContent:'space-between'}}><View style={{flex:1}}><Text style={{color:C.accent,fontWeight:'800',fontSize:13}}>● Workout in progress</Text><Muted>{activeDay?.title} · {activeSession?.name}</Muted></View><Btn title="RESUME" small onPress={()=>setTab('workout')}/></Row></Panel>:null}
+    {plan&&next?<><BlockTitle title={today?.recovery?"Next training day":"Today's focus"} action="Full schedule" onPress={()=>goto('plan')}/>
+      <Panel><Row style={{justifyContent:'space-between'}}><View><Text style={{color:C.accent,fontSize:11,fontWeight:'800',letterSpacing:1}}>{WEEKDAYS[next.weekday].toUpperCase()} · {next.sessions.length} SESSION{next.sessions.length>1?'S':''}</Text><Text style={{color:C.text,fontSize:23,fontWeight:'800',marginTop:7}}>{next.title}</Text><Muted style={{marginTop:3}}>{next.focus}</Muted></View><Text style={{fontSize:28,color:C.accent}}>↗</Text></Row><Rule/><Btn title="OPEN TRAINING DAY" onPress={()=>openDay(next.id)}/></Panel>
+    </>:null}
+    <BlockTitle title="Training tools"/><View style={{flexDirection:'row',gap:10}}>
+      <TouchableOpacity style={[styles.tool,{flex:1}]} onPress={()=>goto('generator')}><Text style={{color:C.accent,fontSize:27}}>✦</Text><Label>Plan generator</Label><Muted style={{fontSize:11}}>Personalized routines</Muted></TouchableOpacity>
+      <TouchableOpacity style={[styles.tool,{flex:1}]} onPress={()=>goto('insights')}><Text style={{color:C.accent,fontSize:27}}>▥</Text><Label>Progress</Label><Muted style={{fontSize:11}}>Track your gains</Muted></TouchableOpacity>
+    </View>
+    <Muted style={{marginTop:16,fontSize:11,textAlign:'center'}}>Offline-first. Your workout records remain on this device.</Muted>
+  </>;
+ };
+ const PlanScreen=()=>{
+   if(!plan)return <><Header title="Training plan" subtitle="Your weekly body-part schedule."/><Panel><H2>No plan generated yet</H2><Muted style={{marginVertical:12}}>Tell us how you train and we’ll build your weekly schedule.</Muted><Btn title="BUILD MY PLAN" onPress={()=>goto('generator')}/></Panel></>;
+   return <><Header title="Your training plan" subtitle={`${plan.splitName} · ${plan.profile.sessionsPerDay} session${plan.profile.sessionsPerDay>1?'s':''} per day`}/>
+     <Panel style={{marginBottom:20}}><Row style={{justifyContent:'space-between'}}><View><Text style={[S.eyebrow,{marginBottom:7}]}>ACTIVE PROGRAM</Text><Text style={{fontSize:21,color:C.text,fontWeight:'800'}}>{GOALS[plan.profile.goal]}</Text><Muted>{plan.days.filter(x=>!x.recovery).length} days / week · {plan.profile.minutes} min / session</Muted></View><Text style={{fontSize:26,color:C.accent}}>◈</Text></Row></Panel>
+     <BlockTitle title="Weekly schedule" action="Regenerate" onPress={()=>goto('generator')}/>
+     {WEEKDAYS.map((w,index)=>{const d=plan.days.find(x=>x.weekday===index);return <TouchableOpacity key={w} activeOpacity={d?0.7:1} onPress={()=>d&&openDay(d.id)} style={[styles.weekItem,d&&{borderColor:index===mondayIndex(new Date())?C.accent:C.line}]}><View style={{width:48,height:49,borderRadius:13,backgroundColor:d?C.accentDark:C.card,justifyContent:'center',alignItems:'center'}}><Text style={{color:d?C.accent:C.dim,fontSize:11,fontWeight:'900'}}>{w.toUpperCase()}</Text></View><View style={{flex:1,marginLeft:14}}><Label>{d?d.title:'Rest day'}</Label><Muted style={{fontSize:11}}>{d?d.recovery?'Mobility & rest':`${d.sessions.length} session${d.sessions.length>1?'s':''} · ${d.sessions.reduce((n,s)=>n+s.exercises.length,0)} exercises`:'Recovery & recharge'}</Muted></View><Text style={{color:d?C.accent:C.dim,fontSize:18}}>{d?'›':'—'}</Text></TouchableOpacity>})}
+     <Muted style={{marginTop:13,fontSize:12}}>Plans are templates, not medical advice. Adjust volume, rest and exercise choices to your ability and recovery.</Muted>
+>>>>>>> 0231507b0e3f28685395d33a30aca9db624065c2
    </>;
  };
  const DayScreen=()=>!day?PlanScreen():<><Header title={day.title} subtitle={`${WEEKDAYS[day.weekday]} · ${day.focus}`} back={()=>goto('plan')}/>
@@ -168,12 +201,16 @@ function AppInner(){
    </Panel>)}
    {day.conditioning?<Panel style={{borderColor:'#315D51'}}><Text style={{color:C.accent,fontWeight:'800'}}>OPTIONAL CARDIO</Text><Text style={{color:C.text,fontSize:16,fontWeight:'800',marginTop:8}}>{day.conditioning.minutes} minutes</Text><Muted style={{marginTop:5}}>{day.conditioning.activity}</Muted></Panel>:null}
  </>;
+<<<<<<< HEAD
  const GeneratorScreen=()=> <AssessmentFlow base={db.profile} initial={db.assessment} onGenerate={(profile,answers)=>{
    const generate=()=>{const newPlan=generatePlan(profile,[...EXERCISES,...db.customExercises]);put(o=>({...o,profile,assessment:answers,plan:newPlan,active:null}));setSelectedDay('');setTab('plan');};
    if(db.active)Alert.alert('Finish your current workout','Your workout must be saved or discarded before changing the schedule.');
    else if(plan)Alert.alert('Update weekly schedule?','Completed workout records will remain saved.',[{text:'Not yet',style:'cancel'},{text:'Update schedule',onPress:generate}]);
    else generate();
  }}/>;
+=======
+ const GeneratorScreen=()=> <AssessmentFlow base={db.profile} onGenerate={(profile)=>{const generate=()=>{const newPlan=generatePlan(profile,[...EXERCISES,...db.customExercises]);put(o=>({...o,profile,plan:newPlan,active:null}));setSelectedDay('');setTab('plan');};if(db.active)Alert.alert('Workout in progress','Finish or discard this workout before replacing your plan.');else if(plan)Alert.alert('Replace your plan?','Your completed workouts stay saved.',[{text:'Cancel',style:'cancel'},{text:'Replace',onPress:generate}]);else generate();}}/>;
+>>>>>>> 0231507b0e3f28685395d33a30aca9db624065c2
  const LibraryScreen=()=>{
   const matches=catalog.filter(ex=>(muscleFilter==='All'||ex.muscle===muscleFilter)&&(!swap||isAllowed(ex,db.profile.setup))&&ex.name.toLowerCase().includes(search.toLowerCase())).sort((a,b)=>a.muscle.localeCompare(b.muscle));
   return <><Header title={swap?'Choose an exercise':'Exercise library'} subtitle={swap?'Tap an exercise to add or replace it.':`${catalog.length} exercises · Filter by muscle and equipment.`} back={swap?()=>{setSelectedDay(swap.dayId);setSwap(null);setTab('day')}:undefined}/>
@@ -230,7 +267,11 @@ function AppInner(){
    <Panel><Text style={S.eyebrow}>PROFILE</Text><Text style={{color:C.text,fontWeight:'800',marginVertical:10}}>Your name</Text><TextInput style={S.input} placeholder="Optional" placeholderTextColor={C.dim} value={db.profile.name} onChangeText={(name:string)=>put(o=>({...o,profile:{...o.profile,name}}))}/><Rule/><Label>Weight unit</Label><Selector choices={[{value:'kg',label:'Kilograms (kg)'},{value:'lb',label:'Pounds (lb)'}]} value={db.profile.unit} onChange={x=>{const target=x as Unit;if(target===db.profile.unit)return;const factor=target==='lb'?2.2046226218:1/2.2046226218;const cv=(w:number)=>Math.round(w*factor*100)/100;put(o=>({...o,profile:{...o.profile,unit:target},plan:o.plan?{...o.plan,profile:{...o.plan.profile,unit:target}}:null,history:o.history.map(h=>({...h,sets:h.sets.map(s=>({...s,weight:cv(s.weight)}))})),active:o.active?{...o.active,sets:o.active.sets.map(s=>({...s,weight:cv(s.weight)}))}:null}));}}/><Muted style={{fontSize:11}}>Changing units converts previously logged weights and updates the saved training plan.</Muted></Panel>
    <Panel><Text style={S.eyebrow}>DATA & PRIVACY</Text><BlockTitle title="Your training data"/><Muted style={{marginBottom:15}}>Your training history is stored locally on this device. There is no account or cloud sync in this version.</Muted><Btn title="SHARE HISTORY AS CSV TEXT" secondary onPress={exportCSV}/></Panel>
    <Panel><Label>Training plan</Label><Muted style={{marginTop:7,marginBottom:14}}>You can regenerate your schedule without erasing previous workout history.</Muted><Btn title="EDIT TRAINING PREFERENCES" secondary onPress={()=>goto('generator')}/></Panel>
+<<<<<<< HEAD
    <Panel><Label>About SetMetric</Label><Muted style={{marginTop:8}}>Version 1.4 · Cross-platform Expo app · Offline-first.</Muted><Muted style={{fontSize:11,marginTop:8}}>SetMetric provides general fitness planning, not clinical assessment. Stop painful exercises and seek professional advice for injuries or health concerns.</Muted></Panel>
+=======
+   <Panel><Label>About SetMetric</Label><Muted style={{marginTop:8}}>Version 1.3 · Cross-platform Expo app · Offline-first.</Muted><Muted style={{fontSize:11,marginTop:8}}>SetMetric provides general fitness planning, not clinical assessment. Stop painful exercises and seek professional advice for injuries or health concerns.</Muted></Panel>
+>>>>>>> 0231507b0e3f28685395d33a30aca9db624065c2
    </>;
  };
  const nav:[Tab,string,string][]=[['home','Today','⌂'],['plan','My week','▤'],['insights','Progress','▥']];
