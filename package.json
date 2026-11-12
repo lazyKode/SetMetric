@@ -9,14 +9,19 @@
     "ios": "expo start --ios",
     "doctor": "npx expo-doctor",
     "check": "tsc --noEmit",
-    "test": "tsc -p tsconfig.core.json && node --test tests/generator.test.cjs"
+    "test": "tsc -p tsconfig.core.json && node --test tests/generator.test.cjs",
+    "web": "expo start --web",
+    "build:web": "expo export --platform web"
   },
   "dependencies": {
     "expo": "~57.0.21",
     "react": "19.2.3",
     "react-native": "0.86.3",
     "@react-native-async-storage/async-storage": "2.2.0",
-    "react-native-safe-area-context": "~5.7.0"
+    "react-native-safe-area-context": "~5.7.0",
+    "react-dom": "19.2.3",
+    "react-native-web": "0.21.0",
+    "@expo/metro-runtime": "~57.0.18"
   },
   "devDependencies": {
     "typescript": "^5.9.0",
