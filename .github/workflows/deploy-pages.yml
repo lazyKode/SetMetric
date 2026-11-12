@@ -1,0 +1,72 @@
+name: Publish SetMetric Website
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'App.tsx'
+      - 'src/**'
+      - 'assets/**'
+      - 'package.json'
+      - 'app.json'
+      - '.github/workflows/deploy-pages.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: setmetric-pages
+  cancel-in-progress: false
+
+jobs:
+  web:
+    name: Build and publish browser app
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Install Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install packages
+        run: npm install --no-audit --no-fund
+      - name: Check for Git merge conflicts and TypeScript errors
+        run: |
+          set -euo pipefail
+          if grep -R -n -E '^(<<<<<<< |=======|>>>>>>> )' App.tsx src --include='*.ts' --include='*.tsx'; then
+            echo '::error::Merge conflict markers must be removed before deployment.'
+            exit 1
+          fi
+          npm test
+          npm run check
+      - name: Export Expo web app for GitHub Pages
+        run: |
+          npm run build:web
+          test -s dist/index.html
+          touch dist/.nojekyll
+          echo '### Browser build generated' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Source: current main branch. Published at /SetMetric/ after successful Pages deployment.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep browser build as downloadable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SetMetric-Web-Build
+          path: dist/
+          include-hidden-files: true
+          retention-days: 30
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: dist
+      - name: Publish to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4
