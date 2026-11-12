@@ -24,6 +24,15 @@
       "resizeMode": "contain",
       "backgroundColor": "#0B1116"
     },
-    "description": "A simple evidence-informed weekly strength, muscle, fitness and fat-loss schedule generator"
+    "description": "A simple evidence-informed weekly strength, muscle, fitness and fat-loss schedule generator",
+    "web": {
+      "output": "single",
+      "name": "SetMetric",
+      "shortName": "SetMetric",
+      "favicon": "./assets/icon.png"
+    },
+    "experiments": {
+      "baseUrl": "/SetMetric"
+    }
   }
 }
