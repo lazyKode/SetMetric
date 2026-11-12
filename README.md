@@ -12,7 +12,7 @@ This is an independent app built with Expo SDK 57, React Native and TypeScript. 
 - Auto-select / Full Body / Upper-Lower / Push-Pull-Legs / Body-Part splits.
 - Full gym, dumbbells/bodyweight, or band/bodyweight equipment filters.
 - 30–90 minutes **per session**, 1–3 sessions per day, balanced or high-volume options.
-- Up to 3 priority muscle groups and optional armwrestling-specific grip drills.
+- Choose any number of focus muscle groups, including **all body parts**, plus optional armwrestling-specific grip drills.
 - Exercise library with technique cues, muscle filters, text search, and custom exercises.
 - Plan-day details and exercise replacements, additions, removals, rep and set adjustment.
 - Start/resume individual sessions, log each set's load, reps and reps in reserve (RIR).
@@ -25,6 +25,12 @@ This is an independent app built with Expo SDK 57, React Native and TypeScript. 
 - Dark design, custom icon, iOS/Android app configuration.
 
 **Not yet included:** exercise demonstration videos, AI chat, authentication, cross-device synchronization, HealthKit/Health Connect integration, notifications, background rest timer, plate calculator, PDF plans, actual CSV-file export, subscriptions, or live individualized coaching. Those would require additional development. The app does not diagnose injuries or verify safe loading.
+
+## Use SetMetric online (GitHub Pages)
+
+**Open the live web app:** **https://lazykode.github.io/SetMetric/**
+
+The browser version is published using GitHub Actions from this repository. To check or redeploy it, open [Publish SetMetric Website](https://github.com/lazyKode/SetMetric/actions/workflows/deploy-pages.yml) and use **Run workflow**. GitHub Pages must use **Settings → Pages → Source: GitHub Actions**. The website and installable iOS/Android apps share the project source but have separate build workflows.
 
 ## Install on iPhone and Android from Windows (Aarti Sangrah-style)
 
