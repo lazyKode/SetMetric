@@ -8,7 +8,13 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/build-iphone-android.yml'
-      - 'src/assessment.tsx'
+      - 'App.tsx'
+      - 'src/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'assets/**'
+      - 'package.json'
+      - 'app.json'
   workflow_dispatch:
     inputs:
       platform:
@@ -31,7 +37,7 @@ concurrency:
 jobs:
   android:
     name: Android APK
-    if: ${{ inputs.platform == 'both' || inputs.platform == 'android' }}
+    if: ${{ github.event_name == 'push' || inputs.platform == 'both' || inputs.platform == 'android' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     steps:
@@ -55,7 +61,13 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Check workout generator and source
+        shell: bash
         run: |
+          set -euo pipefail
+          if grep -R -n -E '^(<<<<<<< |=======|>>>>>>> )' App.tsx src --include='*.ts' --include='*.tsx'; then
+            echo '::error::Unresolved Git merge markers detected.'
+            exit 1
+          fi
           npm test
           npm run check
       - name: Set unique Android build version
@@ -159,7 +171,13 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Check workout generator and source
+        shell: bash
         run: |
+          set -euo pipefail
+          if grep -R -n -E '^(<<<<<<< |=======|>>>>>>> )' App.tsx src --include='*.ts' --include='*.tsx'; then
+            echo '::error::Unresolved Git merge markers detected.'
+            exit 1
+          fi
           npm test
           npm run check
       - name: Set unique iOS build version
